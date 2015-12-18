@@ -6,10 +6,11 @@ module Jekyll
 
     def watch(options)
       site = Jekyll::Site.new(options)
-      listener = build_listener(site, options)
+      watch_paths = [[options['source']] + additional_watch_paths].flatten
+      listener = build_listener(site, watch_paths, options)
       listener.start
 
-      Jekyll.logger.info "Auto-regeneration:", "enabled for '#{options['source']}'"
+      Jekyll.logger.info "Auto-regeneration:", "enabled for '#{watch_paths.join("','")}'"
 
       unless options['serving']
         trap("INT") do
@@ -25,9 +26,9 @@ module Jekyll
     end
 
     # TODO: shouldn't be public API
-    def build_listener(site, options)
+    def build_listener(site, watch_paths, options)
       Listen.to(
-        options['source'],
+        *watch_paths,
         :ignore => listen_ignore_paths(options),
         :force_polling => options['force_polling'],
         &(listen_handler(site))
@@ -97,6 +98,12 @@ module Jekyll
 
     def sleep_forever
       loop { sleep 1000 }
+    end
+
+    private
+
+    def additional_watch_paths
+      ENV.fetch('ADDITIONAL_JEKYLL_WATCH_PATHS', '').split(',').compact
     end
   end
 end
